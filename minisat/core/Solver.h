@@ -148,9 +148,12 @@ public:
 
     // Statistics: (read-only member variable)
     //
-    uint64_t solves, starts, decisions, rnd_decisions, propagations, conflicts;
+    uint64_t solves, starts, decisions, rnd_decisions, propagations, conflicts, sls_last_restart;
     uint64_t dec_vars, num_clauses, num_learnts, clauses_literals, learnts_literals, max_literals, tot_literals;
+    
+    //Filename : Necessary for running an independent SLS solver
 
+    char * filename;
 protected:
 
     // Helper structures:
@@ -261,6 +264,10 @@ protected:
     void     varBumpActivity  (Var v);                 // Increase a variable with the current 'bump' value.
     void     claDecayActivity ();                      // Decay all clauses with the specified factor. Implemented by increasing the 'bump' value instead.
     void     claBumpActivity  (Clause& c);             // Increase a clause with the current 'bump' value.
+
+    // To update the order heap with SLS scores. 
+    //
+    void    getSlsScores     (); 
 
     // Operations on clauses:
     //
