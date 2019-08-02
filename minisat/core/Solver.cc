@@ -278,6 +278,7 @@ void Solver::cancelUntil(int level) {
 // Currently running CCAnr by Soawei Cai
 
 void Solver::getSlsScores() {
+  printf("[sls] running SLS\n");
   int seed = rand();
   int soln[50000]; // import minisat current values here.
   using std::cout, std::endl;
@@ -287,8 +288,6 @@ void Solver::getSlsScores() {
   c->default_settings();
   c->build_neighbor_relation();
   int num_vars = c->num_vars;
-  int *score = c->score;
-  vec<int> scores;
   assert(nVars() == num_vars &&
          "Number of variable in MiniSAT and CCAnr doesn't match.");
   for (int i = 1; i <= num_vars; i++) {
@@ -302,18 +301,18 @@ void Solver::getSlsScores() {
   }
   c->run(soln, seed);
   if (sls_verb > 1)
-    cout << "a displaying scores";
-  for (int i = 1; i <= nVars(); i++) {
+    cout << "a displaying scores" << endl;
+  for (int var = 0; var < nVars(); var++) {
     if (sls_verb > 1) {
-      if (i % 10 == 1)
-        cout << endl << "a ";
-      cout << score[i] << " ";
+      cout << var+1 << " : " << c->score[var+1] << " pol: " << c->cur_soln[var+1] << endl;
     }
-    scores.push(i);
-    activity[i] = -score[i];
+    activity[var] = -(c->score[var+1]);
+    polarity[var] = 1-c->cur_soln[var+1];
+    assert(activity[var]>=0);
   }
+  var_inc = 1;
 
-  order_heap.build(scores);
+  rebuildOrderHeap();
   delete c;
 }
 
@@ -785,6 +784,14 @@ lbool Solver::search(int nof_conflicts) {
   vec<Lit> learnt_clause;
   starts++;
   for (;;) {
+    if (use_sls
+        && decisionLevel() == 0
+        && starts >= sls_last_restart + sls_in
+    ) {
+        sls_last_restart = starts;
+        getSlsScores();
+    }
+
     CRef confl = propagate();
     if (confl != CRef_Undef) {
       // CONFLICT
@@ -880,10 +887,7 @@ lbool Solver::search(int nof_conflicts) {
           num_assigned_vars++;
       }
 
-      if (use_sls && starts >= sls_last_restart + sls_in &&
-          (double)nVars() * (sls_after / 100) < (double)num_assigned_vars) {
-        sls_last_restart = starts;
-        getSlsScores();
+
       }
     }
   }
