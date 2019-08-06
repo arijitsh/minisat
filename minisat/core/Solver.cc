@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **************************************************************************************************/
 
 #include <math.h>
+#include <vector>
 
 #include "minisat/core/Solver.h"
 #include "minisat/mtl/Alg.h"
@@ -307,7 +308,8 @@ void Solver::getSlsScores()
 {
     if(sls_verb>0)printf("c [sls] running SLS\n");
     int seed = rand();
-    int soln[50000]; // import minisat current values here.
+    std::vector<int> soln(nVars()+1);
+
     CCAnr *c = new CCAnr();
     c->verbosity = sls_verb;
 //     c->build_instance(filename);
@@ -316,16 +318,16 @@ void Solver::getSlsScores()
     c->build_neighbor_relation();
     int num_vars = c->num_vars;
     assert(nVars() == num_vars && "Number of variable in MiniSAT and CCAnr doesn't match.");
-    for (int i = 1; i <= num_vars; i++) {
-        if (value(i) == l_True) {
-            soln[i] = 1;
-        } else if (value(i) == l_False) {
-            soln[i] = 0;
+    for (int var = 0; var < nVars(); var++) {
+        if (value(var) == l_True) {
+            soln[var+1] = 1;
+        } else if (value(var) == l_False) {
+            soln[var+1] = 0;
         } else {
-            soln[i] = rand() % 2;
+            soln[var+1] = rand() % 2;
         }
     }
-    c->run(soln, seed);
+    c->run(soln.data(), seed);
     for (int var = 0; var < nVars(); var++) {
         activity[var] = -(c->score[var + 1]);
         polarity[var] = 1 -  c->cur_soln[var + 1];
