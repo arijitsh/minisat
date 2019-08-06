@@ -799,41 +799,6 @@ bool Solver::simplify()
     return true;
 }
 
-Clause Solver::all_clauses(int i ){
-//     cout <<"c [CCAnr] ** "<<clauses.size()<< endl;
-    if(i<(int)num_clauses)
-        return ca[clauses[i]];
-    else{
-            if(sls_verb>1)cout << "c [Solver] learnt clause : "<< (i-  (int)num_clauses)  <<" ca size : " << ca.size() <<" learnts size : " << learnts.size()  <<endl;
-
-
-        return ca[learnts[i-(int)num_learnts]];
-
-    }
-}
-
-
-Lit Solver::lit_at_clause(int i , int l){
-    Lit lit;
-    if(i<(int)num_clauses){
-        lit = ca[clauses[i]][l];
-    } else{
-        lit =  ca[learnts[i-  (int)num_clauses]][l];
-    }
-    return lit;
-}
-
-// vec<CRef> Solver::all_clauses(){
-//         vec<CRef> cs ;
-//         for (int i = 0; i < clauses.size(); i++) {
-//             cs.push(clauses[i]);
-//         }
-//         for (int i = 0; i < learnts.size(); i++) {
-//             cs.push(learnts[i]);
-//         }
-//         return cs;
-//
-// }
 
 /*_________________________________________________________________________________________________
 |

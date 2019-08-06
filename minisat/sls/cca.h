@@ -237,6 +237,53 @@ class CCAnr
         neighbor_flag = NULL;
     }
 
+int add_clauses(Solver* s, vec<CRef>& clauses, int offs) {
+    for (int c = 0; c < clauses.size(); c++) {
+        Clause &cl = s->ca[clauses[c]];
+        clause_lit_count[c+offs] = cl.size();
+        clause_lit[c+offs] = new lit[clause_lit_count[c+offs]+1];
+
+        if(verbosity>1) {
+            cout<<"c [CCAnr] Literals in clause " << c <<"       : "<< cl.size() <<endl;
+        }
+
+        int i;
+        for(i = 0; i < cl.size(); ++i) {
+            Lit lit = cl[i];
+            clause_lit[c+offs][i].clause_num = c+offs;
+            clause_lit[c+offs][i].var_num = var(lit)+1;
+            if(verbosity>2) {
+                cout
+                << "c [CCAnr] clause : no. " << c
+                << " var: " << var(lit)+1
+                << endl;
+            }
+            if ((lit.x%2) == 0) {
+                clause_lit[c+offs][i].sense = 1;
+            } else {
+                clause_lit[c+offs][i].sense = 0;
+            }
+            var_lit_count[clause_lit[c+offs][i].var_num]++;
+        }
+        clause_lit[c+offs][i].var_num = 0;
+        clause_lit[c+offs][i].clause_num = -1;
+
+        //unit clause
+        if(clause_lit_count[c+offs] == 1) {
+            assert(false);
+        }
+
+        if(clause_lit_count[c+offs] > max_clause_len) {
+            max_clause_len = clause_lit_count[c+offs];
+        } else if(clause_lit_count[c+offs] < min_clause_len) {
+                min_clause_len = clause_lit_count[c+offs];
+        }
+        formula_len += clause_lit_count[c+offs];
+    }
+
+    return clauses.size();
+}
+
 void build_instance_from_solver(Solver* s ){
 
     int     cur_lit;
@@ -247,7 +294,7 @@ void build_instance_from_solver(Solver* s ){
     if(verbosity>1)cout<<"c [CCAnr] Initialized with solver." <<endl;
 
     num_vars = s->nVars();
-    num_clauses = s->clauses.size();
+    num_clauses = s->clauses.size()+s->learnts.size();
     ratio = double(num_clauses)/(double)num_vars;
 
     if(num_vars>=MAX_VARS || num_clauses>=MAX_CLAUSES)
@@ -273,48 +320,12 @@ void build_instance_from_solver(Solver* s ){
 
     if(verbosity>2)cout<<"c [CCAnr] Stats Gathered : " <<endl;
     if(verbosity>2)cout<<"c [CCAnr] Number of original clause   : "<< s->clauses.size() <<endl;
-    //if(verbosity>2)cout<<"c [CCAnr] Number of learnts clause    : "<< s->learnts.size() <<endl;
+    if(verbosity>2)cout<<"c [CCAnr] Number of learnts clause    : "<< s->learnts.size() <<endl;
 
     //Read the clauses, one at a time.
-    for (c = 0; c < s->clauses.size(); c++) {
-        Clause cl = s->ca[s->clauses[c]];
-        clause_lit_count[c] = cl.size();
-        clause_lit[c] = new lit[clause_lit_count[c]+1];
-
-        if(verbosity>1)cout<<"c [CCAnr] Literals in clause " << c <<"       : "<< cl.size() <<endl;
-
-        for(i = 0; i < cl.size(); ++i) {
-            Lit lit = s->lit_at_clause(c,i);
-            clause_lit[c][i].clause_num = c;
-            clause_lit[c][i].var_num = var(lit)+1;
-            if(verbosity>2) {
-                cout
-                << "c [CCAnr] v : " << v
-                << " clause : " << c << " i : "<< i
-                << " clause_lit[c][i].var_num : "<< var(lit)+1 << endl;
-            }
-            if ((lit.x%2) == 0) {
-                clause_lit[c][i].sense = 1;
-            } else {
-                clause_lit[c][i].sense = 0;
-            }
-            var_lit_count[clause_lit[c][i].var_num]++;
-        }
-        clause_lit[c][i].var_num = 0;
-        clause_lit[c][i].clause_num = -1;
-
-        //unit clause
-        if(clause_lit_count[c] == 1) {
-            assert(false);
-        }
-
-        if(clause_lit_count[c] > max_clause_len) {
-            max_clause_len = clause_lit_count[c];
-        } else if(clause_lit_count[c] < min_clause_len) {
-                min_clause_len = clause_lit_count[c];
-        }
-        formula_len += clause_lit_count[c];
-    }
+    int offs = 0;
+    offs+= add_clauses(s, s->clauses, offs);
+    offs+= add_clauses(s, s->learnts, offs);
 
     if(verbosity>1)cout<<"c [CCAnr] Clauses are initialized." <<endl;
 
