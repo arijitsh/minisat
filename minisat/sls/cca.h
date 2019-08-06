@@ -72,6 +72,7 @@ using namespace Minisat;
 class CCAnr
 {
    public:
+       ~CCAnr();
 
     char *inst;
     int seed;
@@ -100,13 +101,9 @@ class CCAnr
     /* literal arrays */
     lit *var_lit[MAX_VARS];            // var_lit[i][j] means the j'th literal of var i.
     int var_lit_count[MAX_VARS];       // amount of literals of each var
-    lit *clause_lit[MAX_CLAUSES];      // clause_lit[i][j] means the j'th literal of
+    vector<lit*> clause_lit;      // clause_lit[i][j] means the j'th literal of
                                        // clause i.
     int clause_lit_count[MAX_CLAUSES]; // amount of literals in each clause
-
-    lit *org_clause_lit[MAX_CLAUSES];      // clause_lit[i][j] means the j'th literal
-                                           // of clause i.
-    int org_clause_lit_count[MAX_CLAUSES]; // amount of literals in each clause
     int simplify = 0;
 
     /* Information about the variables. */
@@ -241,7 +238,8 @@ int add_clauses(Solver* s, vec<CRef>& clauses, int offs) {
     for (int c = 0; c < clauses.size(); c++) {
         Clause &cl = s->ca[clauses[c]];
         clause_lit_count[c+offs] = cl.size();
-        clause_lit[c+offs] = new lit[clause_lit_count[c+offs]+1];
+        assert(clause_lit.size() == c+offs);
+        clause_lit.push_back(new lit[clause_lit_count[c+offs]+1]);
 
         if(verbosity>1) {
             cout<<"c [CCAnr] Literals in clause " << c <<"       : "<< cl.size() <<endl;
@@ -331,21 +329,6 @@ void build_instance_from_solver(Solver* s ){
 
 
     avg_clause_len = (double)formula_len/num_clauses;
-
-    if(unitclause_queue_end_pointer>0)
-    {
-        simplify = 1;
-        for (c = 0; c < num_clauses; c++)
-        {
-            org_clause_lit_count[c] = clause_lit_count[c];
-            org_clause_lit[c] = new lit[clause_lit_count[c]+1];
-            for(i=0; i<org_clause_lit_count[c]; ++i)
-            {
-                org_clause_lit[c][i] = clause_lit[c][i];
-            }
-
-        }
-    }
 
 
     //creat var literal arrays
@@ -443,35 +426,7 @@ void print_problem(){
         }
 
         if (simplify == 1) {
-            for (c = 0; c < num_clauses; ++c) {
-                flag = 0;
-                for (j = 0; j < org_clause_lit_count[c]; ++j)
-                    if (cur_soln[org_clause_lit[c][j].var_num] == org_clause_lit[c][j].sense) {
-                        flag = 1;
-                        break;
-                    }
-
-                if (flag == 0) { // output the clause unsatisfied by the solution
-                    cout << "c clause " << c << " is not satisfied" << endl;
-
-                    if (clause_delete[c] == 1)
-                        cout << "c this clause is deleted by UP." << endl;
-
-                    cout << "c ";
-                    for (j = 0; j < org_clause_lit_count[c]; ++j) {
-                        if (org_clause_lit[c][j].sense == 0)
-                            cout << "-";
-                        cout << org_clause_lit[c][j].var_num << " ";
-                    }
-                    cout << endl;
-
-                    for (j = 0; j < org_clause_lit_count[c]; ++j)
-                        cout << cur_soln[org_clause_lit[c][j].var_num] << " ";
-                    cout << endl;
-
-                    return 0;
-                }
-            }
+            assert(false);
         }
 
         return 1;
@@ -1111,8 +1066,6 @@ void print_problem(){
             cout << "c solveTime = " << comp_time << endl;
         }
 
-        //     free_memory();
-
         return 0;
     }
     void unit_propagation()
@@ -1322,6 +1275,10 @@ void print_problem(){
     }
 
 }; // end class ccanr
+
+inline CCAnr::~CCAnr() {
+    free_memory();
+}
 
 
 #endif
