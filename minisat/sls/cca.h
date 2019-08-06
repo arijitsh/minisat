@@ -63,14 +63,16 @@ enum type { SAT3, SAT5, SAT7, strSAT } probtype;
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include "minisat/core/Solver.h"
+#include "minisat/mtl/Vec.h"
 
 using namespace std;
+using namespace Minisat;
 
 class CCAnr
 {
    public:
-    // CCAnr();
-    ~CCAnr();
+
     char *inst;
     int seed;
 
@@ -156,7 +158,6 @@ class CCAnr
     int tries;
     int max_flips = 2000000000;
     int step;
-
     int verbosity;
     // the following [1] elements were made global
     // from local to the function build_instance
@@ -185,6 +186,7 @@ class CCAnr
    * Read in the problem.
    */
     int temp_lit[MAX_VARS]; // the max length of a clause can be MAX_VARS
+
     int build_instance(char *filename)
     {
         char line[1000000];
@@ -356,19 +358,179 @@ class CCAnr
         neighbor_flag = NULL;
     }
 
+void build_instance_from_solver(Solver* s ){
+
+    int     cur_lit;
+    int     i,j;
+    int		v,c;//var, clause
+
+    if(verbosity>1)cout << "c [CCAnr] Building Instance" <<endl;
+    if(verbosity>1)cout<<"c [CCAnr] Initialized with solver." <<endl;
+
+    num_vars = s->nVars();
+    num_clauses = s->num_clauses;// + s->num_learnts;
+
+    ratio = double(num_clauses)/num_vars;
+
+    if(num_vars>=MAX_VARS || num_clauses>=MAX_CLAUSES)
+    {
+        cout << "the size of instance exceeds out limitation, please enlarge MAX_VARS and (or) MAX_CLAUSES."<< endl;
+        exit(-1);
+    }
+
+    for (c = 0; c < num_clauses; c++)
+    {
+        clause_lit_count[c] = 0;
+        clause_delete[c] = 0;
+    }
+    for (v=1; v<=num_vars; ++v)
+    {
+        var_lit_count[v] = 0;
+        fix[v] = 0;
+    }
+
+    max_clause_len = 0;
+    min_clause_len = num_vars;
+    // ^ Why? Because it will be updated later.
+
+    //Now, read the clauses, one at a time.
+
+
+    if(verbosity>2)cout<<"c [CCAnr] Stats Gathered : " <<endl;
+    if(verbosity>2)cout<<"c [CCAnr] Number of original clause   : "<< s->num_clauses <<endl;
+    if(verbosity>2)cout<<"c [CCAnr] Number of learnts clause    : "<< s->num_learnts <<endl;
+
+    for (c = 0; c < num_clauses; c++) {
+
+        Clause  cl = s->all_clauses(c);
+        clause_lit_count[c] = cl.size();
+        clause_lit[c] = new lit[clause_lit_count[c]+1];
+
+        if(verbosity>1)cout<<"c [CCAnr] Literals in clause " << c <<"       : "<< cl.size() <<endl;
+
+        for(i = 0; i < cl.size(); ++i) {
+            //Clause cla = *cl;
+            Lit lit = s->lit_at_clause(c,i);
+            if(verbosity>1)cout << "c [CCAnr] lit : " << (((lit.x)>>1)+1)*(((lit.x)%2)*-2+1) <<endl;
+            //assert(solver->varData[lit.var()].removed == Removed::none);
+            //lbool val = l_Undef;
+            //if (s->value(lit) != l_Undef) {
+            //    val = s->value(lit);
+            //} else {
+            //    //val = s->lit_inside_assumptions(lit);
+            //}
+            //
+            //if (val == l_True) {
+            //    //clause is SAT, skip!
+            //    sat = true;
+            //    continue;
+            //} else if (val == l_False) {
+            //    continue;
+            //}
+            clause_lit[c][i].clause_num = c;
+            clause_lit[c][i].var_num = var(lit)+1;
+            if(verbosity>2)cout<<"c [CCAnr] v : "<<v <<" c : "<<c<< " i : "<< i << " clause_lit[c][i].var_num : "<< var(lit)+1 << endl;
+
+            //if (s->value(lit) == l_True || (s->value(lit) == l_Undef && rand()%2==1))
+            if(lit.x%2 == 0 ) clause_lit[c][i].sense = 1;
+            else clause_lit[c][i].sense = 0;
+//             var_lit_count[clause_lit[c][i].var_num]++;
+        }
+        clause_lit[c][i].var_num=0;
+        clause_lit[c][i].clause_num = -1;
+
+        //unit clause
+        if(clause_lit_count[c]==1)
+        {
+            unitclause_queue[unitclause_queue_end_pointer++] = clause_lit[c][0];
+            clause_delete[c]=1;
+        }
+
+        if(clause_lit_count[c] > max_clause_len)
+            max_clause_len = clause_lit_count[c];
+        else if(clause_lit_count[c] < min_clause_len)
+            min_clause_len = clause_lit_count[c];
+
+        formula_len += clause_lit_count[c];
+    }
+
+    if(verbosity>1)cout<<"c [CCAnr] Clauses are initialized." <<endl;
+
+
+    avg_clause_len = (double)formula_len/num_clauses;
+
+    if(unitclause_queue_end_pointer>0)
+    {
+        simplify = 1;
+        for (c = 0; c < num_clauses; c++)
+        {
+            org_clause_lit_count[c] = clause_lit_count[c];
+            org_clause_lit[c] = new lit[clause_lit_count[c]+1];
+            for(i=0; i<org_clause_lit_count[c]; ++i)
+            {
+                org_clause_lit[c][i] = clause_lit[c][i];
+            }
+
+        }
+    }
+
+
+    //creat var literal arrays
+    for (v=1; v<=num_vars; ++v)
+    {
+        var_lit[v] = new lit[var_lit_count[v]+1];
+        var_lit_count[v] = 0;	//reset to 0, for build up the array
+    }
+    //scan all clauses to build up var literal arrays
+    for (c = 0; c < num_clauses; ++c)
+    {
+        for(i=0; i<clause_lit_count[c]; ++i)
+        {
+            v = clause_lit[c][i].var_num;
+            if(verbosity>2)cout<<"c [CCAnr] variable at c: "<<c<<" pos : "<< i<<" is : "<< v << " It has "<< var_lit_count[v] << " variables." << endl;
+//             var_lit[v][var_lit_count[v]] =  clause_lit[c][i];
+            ++var_lit_count[v];
+        }
+    }
+    for (v=1; v<=num_vars; ++v) //set boundary
+        var_lit[v][var_lit_count[v]].clause_num=-1;
+    if(verbosity>1)cout<<"c [CCAnr] Wow, Initialized successfully"<<endl;
+}
+
+void print_problem(){
+    cout<< endl << "c [CCAnr] Problem Initialized with " << endl;
+    for(int i = 0; i<num_clauses;i++){
+        for(int j=0; j<clause_lit_count[i];j++){
+            cout<<(clause_lit[i][j].var_num)*((clause_lit[i][j].sense)*2-1)<< " ";
+        }
+        cout<<"0"<<endl;
+    }
+}
+
+
     void print_solution()
     {
         int i;
 
-        cout << "v ";
+//         cout << endl<< "c [CCAnr Solution] ";
+//         for (i = 1; i <= num_vars; i++) {
+//             if (cur_soln[i] == 0)
+//                 cout << "-";
+//             cout << i;
+//             if (i % 10 == 0)
+//                 cout << endl << "c [CCAnr Solution] ";
+//             else
+//                 cout << ' ';
+//         }
+//        cout << "0" << endl;
+                cout << " 0" <<endl<< "c ";
         for (i = 1; i <= num_vars; i++) {
+                            cout << " 0" <<endl<< "c ";
+
             if (cur_soln[i] == 0)
                 cout << "-";
             cout << i;
-            if (i % 10 == 0)
-                cout << endl << "v ";
-            else
-                cout << ' ';
+
         }
         cout << "0" << endl;
     }
@@ -1040,6 +1202,7 @@ class CCAnr
                 cout << "c Algorithmic: aspiration_active = true" << endl;
             else
                 cout << "c Algorithmic: aspiration_active = false" << endl;
+            print_problem();
         }
         for (tries = 0; tries <= max_tries; tries++) {
             settings();
@@ -1287,9 +1450,5 @@ class CCAnr
 
 }; // end class ccanr
 
-CCAnr::~CCAnr()
-{
-    free_memory();
-}
 
 #endif

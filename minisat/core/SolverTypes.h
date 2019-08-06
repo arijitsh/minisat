@@ -525,7 +525,7 @@ class TrailIterator
     }
     bool operator!=(const TrailIterator &ti) const
     {
-        return lits != ti.lits;
+       return lits != ti.lits;
     }
 };
 

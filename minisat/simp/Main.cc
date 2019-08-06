@@ -193,19 +193,19 @@ int main(int argc, char **argv)
         }
         printf(ret == l_True ? "SATISFIABLE\n"
                              : ret == l_False ? "UNSATISFIABLE\n" : "INDETERMINATE\n");
-        if (res != NULL) {
+        if (S.verbosity>0) {
             if (ret == l_True) {
-                fprintf(res, "SAT\n");
+                printf( "SAT\n");
                 for (int i = 0; i < S.nVars(); i++)
                     if (S.model[i] != l_Undef)
-                        fprintf(res, "%s%s%d", (i == 0) ? "" : " ",
+                        printf("%s%s%d", (i == 0) ? "" : " ",
                                 (S.model[i] == l_True) ? "" : "-", i + 1);
-                fprintf(res, " 0\n");
+                printf( " 0\n");
             } else if (ret == l_False)
-                fprintf(res, "UNSAT\n");
+                printf( "UNSAT\n");
             else
-                fprintf(res, "INDET\n");
-            fclose(res);
+                printf( "INDET\n");
+//             fclose(res);
         }
 
 #ifdef NDEBUG

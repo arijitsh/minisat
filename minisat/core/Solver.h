@@ -59,7 +59,10 @@ class Solver
                    Lit s);         // Add a quaternary clause to the solver.
     bool addClause_(vec<Lit> &ps); // Add a clause to the solver without making superflous
                                    // internal copy. Will change the passed vector 'ps'.
+    Clause all_clauses(int i);
 
+    Lit lit_at_clause(int i , int l);
+    void printSolution();
     // Solving:
     //
     bool simplify();                             // Removes already satisfied clauses.

@@ -71,7 +71,7 @@ BoolOption use_sls(_cat1, "use-sls",
                    "Whether to use SLS solver to score variables for branching decisions", false);
 IntOption sls_verb(_cat1, "sls-verb",
                    "Verbosity level for SLS solver used (0=silent, 1=some, 2=more).", 1,
-                   IntRange(0, 2));
+                   IntRange(0, 3));
 IntOption sls_in(_cat1, "sls-in", "k : Call SLS solver to score variables in each k restarts\n", 0,
                  IntRange(0, INT32_MAX));
 IntOption sls_after(_cat1, "sls-aft",
@@ -82,8 +82,7 @@ IntOption sls_after(_cat1, "sls-aft",
 //=================================================================================================
 // Constructor/Destructor:
 
-Solver::Solver()
-    :
+Solver::Solver() :
 
       // Parameters (user settable):
       //
@@ -304,13 +303,13 @@ void Solver::cancelUntil(int level)
 
 void Solver::getSlsScores()
 {
-    printf("[sls] running SLS\n");
+    if(sls_verb>0)printf("c [sls] running SLS\n");
     int seed = rand();
     int soln[50000]; // import minisat current values here.
-    using std::cout, std::endl;
     CCAnr *c = new CCAnr();
     c->verbosity = sls_verb;
-    c->build_instance(filename);
+//     c->build_instance(filename);
+    c->build_instance_from_solver(this);
     c->default_settings();
     c->build_neighbor_relation();
     int num_vars = c->num_vars;
@@ -325,19 +324,18 @@ void Solver::getSlsScores()
         }
     }
     c->run(soln, seed);
-    if (sls_verb > 1)
-        cout << "a displaying scores" << endl;
     for (int var = 0; var < nVars(); var++) {
-        if (sls_verb > 1) {
-            cout << var + 1 << " : " << c->score[var + 1] << " pol: " << c->cur_soln[var + 1]
-                 << endl;
-        }
         activity[var] = -(c->score[var + 1]);
-        polarity[var] = 1 - c->cur_soln[var + 1];
+        polarity[var] = 1 -  c->cur_soln[var + 1];
+        //if(sls_verb > 1 && var%10==0)cout  << endl <<"a [sls sol] ";
+        //if (sls_verb > 1)cout<< 1 - c->cur_soln[var + 1] <<" ";
         assert(activity[var] >= 0);
     }
-    var_inc = 1;
+    //if (sls_verb > 1) cout << endl;
 
+    var_inc = 1;
+//     c->print_solution();
+//     printSolution();
     rebuildOrderHeap();
     delete c;
 }
@@ -777,7 +775,7 @@ bool Solver::simplify()
             if (seen[var(trail[i])] == 0)
                 trail[j++] = trail[i];
         trail.shrink(i - j);
-        // printf("trail.size()= %d, qhead = %d\n", trail.size(), qhead);
+//         / printf("trail.size()= %d, qhead = %d\n", trail.size(), qhead);
         qhead = trail.size();
 
         for (int i = 0; i < released_vars.size(); i++)
@@ -796,6 +794,45 @@ bool Solver::simplify()
 
     return true;
 }
+
+Clause Solver::all_clauses(int i ){
+    if(i<(int)num_clauses)
+        return ca[clauses[i]];
+    else{
+            if(sls_verb>1)cout << "c [Solver] learnt clause : "<< (i-  (int)num_clauses)  <<" ca size : " << ca.size() <<" learnts size : " << learnts.size()  <<endl;
+
+
+        return ca[learnts[i-(int)num_learnts]];
+
+    }
+}
+
+
+Lit Solver::lit_at_clause(int i , int l){
+    Lit lit;
+    if(i<(int)num_clauses){
+        lit = ca[clauses[i]][l];
+        cout <<"c This is original clause" <<endl;
+    } else{
+        cout <<"c This is learnt clause" <<endl;
+        lit =  ca[learnts[i-  (int)num_clauses]][l];
+    }
+    if(sls_verb>1)cout << "c [Solver] clause : "<< (i-  (int)num_clauses)
+        <<" lit : " << lit.x  <<endl;
+    return lit;
+}
+
+// vec<CRef> Solver::all_clauses(){
+//         vec<CRef> cs ;
+//         for (int i = 0; i < clauses.size(); i++) {
+//             cs.push(clauses[i]);
+//         }
+//         for (int i = 0; i < learnts.size(); i++) {
+//             cs.push(learnts[i]);
+//         }
+//         return cs;
+//
+// }
 
 /*_________________________________________________________________________________________________
 |
@@ -819,12 +856,14 @@ lbool Solver::search(int nof_conflicts)
     vec<Lit> learnt_clause;
     starts++;
     for (;;) {
-        if (use_sls && decisionLevel() == 0 && starts >= sls_last_restart + sls_in) {
+        if (use_sls && decisionLevel() == 0
+            && starts >= sls_last_restart + sls_in) {
             sls_last_restart = starts;
             getSlsScores();
         }
-
+//          cout << "c [Solver] Calling after propagate()"<<endl;
         CRef confl = propagate();
+//         printSolution();
         if (confl != CRef_Undef) {
             // CONFLICT
             conflicts++;
@@ -917,7 +956,7 @@ lbool Solver::search(int nof_conflicts)
         }
     }
 }
-}
+
 
 double Solver::progressEstimate() const
 {
@@ -1191,6 +1230,24 @@ void Solver::relocAll(ClauseAllocator &to)
             clauses[j++] = clauses[i];
         }
     clauses.shrink(i - j);
+}
+
+void Solver::printSolution(){
+//     for (int i = 0; i < nVars(); i++)
+//         printf("%s%s%d", (i == 0) ? "" : " ", (polarity[i]) ? "" : "-", i + 1);
+            int i;
+                cout << endl << "c [MiniSat Solution] ";
+
+        for (i = 1; i <= nVars(); i++) {
+            if (polarity[i] == 0)
+                cout << "-";
+            cout << i;
+            if (i % 10 == 0)
+                cout << endl << "c [MiniSat Solution] ";
+            else
+                cout << ' ';
+        }
+        cout << "0" << endl;
 }
 
 void Solver::garbageCollect()
