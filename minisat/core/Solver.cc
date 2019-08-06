@@ -78,6 +78,8 @@ IntOption sls_after(_cat1, "sls-aft",
                     "p : Call SLS solver to score variables after p percentage "
                     "of variables are assigned.\n",
                     0, IntRange(0, 99));
+BoolOption learnt_in_sls(_cat1, "learnt-in-sls",
+                   "Use Learnt Clauses while doing calling SLS from CDCL", false);
 
 //=================================================================================================
 // Constructor/Destructor:
