@@ -1,2 +1,8 @@
 config.mk
 build
+*.kdev4
+*.cnf
+*.cnf,gz
+.directory
+*.txt
+sat
