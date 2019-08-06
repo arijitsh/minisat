@@ -796,6 +796,7 @@ bool Solver::simplify()
 }
 
 Clause Solver::all_clauses(int i ){
+//     cout <<"c [CCAnr] ** "<<clauses.size()<< endl;
     if(i<(int)num_clauses)
         return ca[clauses[i]];
     else{
@@ -812,13 +813,9 @@ Lit Solver::lit_at_clause(int i , int l){
     Lit lit;
     if(i<(int)num_clauses){
         lit = ca[clauses[i]][l];
-        cout <<"c This is original clause" <<endl;
     } else{
-        cout <<"c This is learnt clause" <<endl;
         lit =  ca[learnts[i-  (int)num_clauses]][l];
     }
-    if(sls_verb>1)cout << "c [Solver] clause : "<< (i-  (int)num_clauses)
-        <<" lit : " << lit.x  <<endl;
     return lit;
 }
 
