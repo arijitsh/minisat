@@ -181,6 +181,9 @@ class Solver
     // Filename : Necessary for running an independent SLS solver
 
     char *filename;
+    ClauseAllocator ca;
+    vec<CRef> clauses;    // List of problem clauses.
+    vec<CRef> learnts;    // List of learnt clauses.
 
    protected:
     // Helper structures:
@@ -243,8 +246,6 @@ class Solver
 
     // Solver state:
     //
-    vec<CRef> clauses;    // List of problem clauses.
-    vec<CRef> learnts;    // List of learnt clauses.
     vec<Lit> trail;       // Assignment stack; stores all assigments made in the order
                           // they were made.
     vec<int> trail_lim;   // Separator indices for different decision levels in 'trail'.
@@ -279,7 +280,6 @@ class Solver
                               // for satisfied clauses should be performed in
                               // 'simplify'.
     Var next_var;             // Next variable to be created.
-    ClauseAllocator ca;
 
     vec<Var> released_vars;
     vec<Var> free_vars;
