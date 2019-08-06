@@ -23,6 +23,35 @@ else()
 endif()
 set(MINISAT_SOVERSION ${MINISAT_SOMAJOR})
 
+include(CheckCXXCompilerFlag)
+macro(add_cxx_flag_if_supported flagname)
+  check_cxx_compiler_flag("${flagname}" HAVE_FLAG_${flagname})
+
+  if(HAVE_FLAG_${flagname})
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flagname}" )
+  endif()
+endmacro()
+
+add_cxx_flag_if_supported("-Wall")
+add_cxx_flag_if_supported("-Wextra")
+add_cxx_flag_if_supported("-Wunused")
+add_cxx_flag_if_supported("-Wsign-compare")
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_cxx_flag_if_supported("-fno-omit-frame-pointer")
+endif()
+add_cxx_flag_if_supported("-Wtype-limits")
+add_cxx_flag_if_supported("-Wuninitialized")
+add_cxx_flag_if_supported("-Wno-deprecated")
+add_cxx_flag_if_supported("-Wstrict-aliasing")
+add_cxx_flag_if_supported("-Wpointer-arith")
+add_cxx_flag_if_supported("-Wheader-guard")
+add_cxx_flag_if_supported("-Wpointer-arith")
+add_cxx_flag_if_supported("-Wformat-nonliteral")
+add_cxx_flag_if_supported("-Winit-self")
+add_cxx_flag_if_supported("-Wparentheses")
+add_cxx_flag_if_supported("-Wunreachable-code")
+add_cxx_flag_if_supported("-ggdb3")
+
 #--------------------------------------------------------------------------------------------------
 # Dependencies:
 
