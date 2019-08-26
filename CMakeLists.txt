@@ -70,6 +70,7 @@ add_definitions(-D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS)
 set(MINISAT_LIB_SOURCES
     minisat/utils/Options.cc
     minisat/utils/System.cc
+    minisat/sls/cca.cc
     minisat/core/Solver.cc
     minisat/simp/SimpSolver.cc)
 
@@ -102,11 +103,11 @@ set_target_properties(minisat_simp       PROPERTIES OUTPUT_NAME "minisat")
 #--------------------------------------------------------------------------------------------------
 # Installation targets:
 
-install(TARGETS minisat-lib-static minisat-lib-shared minisat_core minisat_simp 
+install(TARGETS minisat-lib-static minisat-lib-shared minisat_core minisat_simp
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib)
 
-install(DIRECTORY minisat/mtl minisat/utils minisat/core minisat/simp
+install(DIRECTORY minisat/mtl minisat/utils minisat/core minisat/simp minisat/sls
         DESTINATION include/minisat
         FILES_MATCHING PATTERN "*.h")
