@@ -1,3 +1,4 @@
+
 cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 
 project(minisat)
@@ -70,6 +71,7 @@ add_definitions(-D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS)
 set(MINISAT_LIB_SOURCES
     minisat/utils/Options.cc
     minisat/utils/System.cc
+    minisat/sls/cca.cc
     minisat/core/Solver.cc
     minisat/simp/SimpSolver.cc)
 
@@ -93,7 +95,7 @@ endif()
 set_target_properties(minisat-lib-static PROPERTIES OUTPUT_NAME "minisat")
 set_target_properties(minisat-lib-shared
   PROPERTIES
-    OUTPUT_NAME "minisat" 
+    OUTPUT_NAME "minisat"
     VERSION ${MINISAT_VERSION}
     SOVERSION ${MINISAT_SOVERSION})
 
@@ -102,11 +104,11 @@ set_target_properties(minisat_simp       PROPERTIES OUTPUT_NAME "minisat")
 #--------------------------------------------------------------------------------------------------
 # Installation targets:
 
-install(TARGETS minisat-lib-static minisat-lib-shared minisat_core minisat_simp 
+install(TARGETS minisat-lib-static minisat-lib-shared minisat_core minisat_simp
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib)
 
-install(DIRECTORY minisat/mtl minisat/utils minisat/core minisat/simp
+install(DIRECTORY minisat/mtl minisat/utils minisat/core minisat/simp minisat/sls
         DESTINATION include/minisat
         FILES_MATCHING PATTERN "*.h")
