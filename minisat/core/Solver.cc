@@ -80,12 +80,13 @@ IntOption sls_after(_cat1, "sls-aft",
                     "of variables are assigned.\n",
                     0, IntRange(0, 99));
 BoolOption learnt_in_sls(_cat1, "learnt-in-sls",
-                   "Use Learnt Clauses while doing calling SLS from CDCL", false);
+                         "Use Learnt Clauses while doing calling SLS from CDCL", false);
 
 //=================================================================================================
 // Constructor/Destructor:
 
-Solver::Solver() :
+Solver::Solver()
+    :
 
       // Parameters (user settable):
       //
@@ -306,13 +307,14 @@ void Solver::cancelUntil(int level)
 
 void Solver::getSlsScores()
 {
-    if(sls_verb>0)printf("c [sls] running SLS\n");
+    if (sls_verb > 0)
+        printf("c [sls] running SLS\n");
     int seed = rand();
-    std::vector<int> soln(nVars()+1);
+    std::vector<int> soln(nVars() + 1);
 
     CCAnr *c = new CCAnr();
     c->verbosity = sls_verb;
-//     c->build_instance(filename);
+    //     c->build_instance(filename);
     c->build_instance_from_solver(this);
     c->default_settings();
     c->build_neighbor_relation();
@@ -320,17 +322,17 @@ void Solver::getSlsScores()
     assert(nVars() == num_vars && "Number of variable in MiniSAT and CCAnr doesn't match.");
     for (int var = 0; var < nVars(); var++) {
         if (value(var) == l_True) {
-            soln[var+1] = 1;
+            soln[var + 1] = 1;
         } else if (value(var) == l_False) {
-            soln[var+1] = 0;
+            soln[var + 1] = 0;
         } else {
-            soln[var+1] = rand() % 2;
+            soln[var + 1] = rand() % 2;
         }
     }
     c->run(soln.data(), seed);
     for (int var = 0; var < nVars(); var++) {
         activity[var] = -(c->score[var + 1]);
-        polarity[var] = 1 -  c->cur_soln[var + 1];
+        polarity[var] = 1 - c->cur_soln[var + 1];
         //if(sls_verb > 1 && var%10==0)cout  << endl <<"a [sls sol] ";
         //if (sls_verb > 1)cout<< 1 - c->cur_soln[var + 1] <<" ";
         assert(activity[var] >= 0);
@@ -338,8 +340,8 @@ void Solver::getSlsScores()
     //if (sls_verb > 1) cout << endl;
 
     var_inc = 1;
-//     c->print_solution();
-//     printSolution();
+    //     c->print_solution();
+    //     printSolution();
     rebuildOrderHeap();
     delete c;
 }
@@ -779,7 +781,7 @@ bool Solver::simplify()
             if (seen[var(trail[i])] == 0)
                 trail[j++] = trail[i];
         trail.shrink(i - j);
-//         / printf("trail.size()= %d, qhead = %d\n", trail.size(), qhead);
+        //         / printf("trail.size()= %d, qhead = %d\n", trail.size(), qhead);
         qhead = trail.size();
 
         for (int i = 0; i < released_vars.size(); i++)
@@ -798,7 +800,6 @@ bool Solver::simplify()
 
     return true;
 }
-
 
 /*_________________________________________________________________________________________________
 |
@@ -822,14 +823,13 @@ lbool Solver::search(int nof_conflicts)
     vec<Lit> learnt_clause;
     starts++;
     for (;;) {
-        if (use_sls && decisionLevel() == 0
-            && starts >= sls_last_restart + sls_in) {
+        if (use_sls && decisionLevel() == 0 && starts >= sls_last_restart + sls_in) {
             sls_last_restart = starts;
             getSlsScores();
         }
-//          cout << "c [Solver] Calling after propagate()"<<endl;
+        //          cout << "c [Solver] Calling after propagate()"<<endl;
         CRef confl = propagate();
-//         printSolution();
+        //         printSolution();
         if (confl != CRef_Undef) {
             // CONFLICT
             conflicts++;
@@ -922,7 +922,6 @@ lbool Solver::search(int nof_conflicts)
         }
     }
 }
-
 
 double Solver::progressEstimate() const
 {
@@ -1198,22 +1197,23 @@ void Solver::relocAll(ClauseAllocator &to)
     clauses.shrink(i - j);
 }
 
-void Solver::printSolution(){
-//     for (int i = 0; i < nVars(); i++)
-//         printf("%s%s%d", (i == 0) ? "" : " ", (polarity[i]) ? "" : "-", i + 1);
-            int i;
-                cout << endl << "c [MiniSat Solution] ";
+void Solver::printSolution()
+{
+    //     for (int i = 0; i < nVars(); i++)
+    //         printf("%s%s%d", (i == 0) ? "" : " ", (polarity[i]) ? "" : "-", i + 1);
+    int i;
+    cout << endl << "c [MiniSat Solution] ";
 
-        for (i = 1; i <= nVars(); i++) {
-            if (polarity[i] == 0)
-                cout << "-";
-            cout << i;
-            if (i % 10 == 0)
-                cout << endl << "c [MiniSat Solution] ";
-            else
-                cout << ' ';
-        }
-        cout << "0" << endl;
+    for (i = 1; i <= nVars(); i++) {
+        if (polarity[i] == 0)
+            cout << "-";
+        cout << i;
+        if (i % 10 == 0)
+            cout << endl << "c [MiniSat Solution] ";
+        else
+            cout << ' ';
+    }
+    cout << "0" << endl;
 }
 
 void Solver::garbageCollect()
