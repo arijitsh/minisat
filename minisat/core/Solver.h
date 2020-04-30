@@ -254,6 +254,18 @@ protected:
     void     removeSatisfied  (vec<CRef>& cs);                                         // Shrink 'cs' to contain only non-satisfied clauses.
     void     rebuildOrderHeap ();
 
+
+    // Lazy propagation methods
+    //
+    double propagation_cutoff;
+    CRef     lazy_propagate        ();                                                      // Perform unit propagation. Returns possibly conflicting clause.
+    bool     up_for_propagation(Lit l);
+    void     lower_propagation_cutoff();
+    void     reset_propagation_cutoff();
+    bool     elements_remaining_to_propagate();
+
+
+
     // Maintaining Variable/Clause activity:
     //
     void     varDecayActivity ();                      // Decay all variables with the specified factor. Implemented by increasing the 'bump' value instead.

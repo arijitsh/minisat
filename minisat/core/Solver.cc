@@ -101,6 +101,7 @@ Solver::Solver() :
   , conflict_budget    (-1)
   , propagation_budget (-1)
   , asynch_interrupt   (false)
+  , propagation_cutoff (2)
 {}
 
 
@@ -170,7 +171,7 @@ bool Solver::addClause_(vec<Lit>& ps)
         return ok = false;
     else if (ps.size() == 1){
         uncheckedEnqueue(ps[0]);
-        return ok = (propagate() == CRef_Undef);
+        return ok = (lazy_propagate() == CRef_Undef);
     }else{
         CRef cr = ca.alloc(ps, false);
         clauses.push(cr);
@@ -491,6 +492,126 @@ void Solver::uncheckedEnqueue(Lit p, CRef from)
     trail.push_(p);
 }
 
+// --------------------- Just Lazy Propagation things -------------------
+//
+
+bool Solver::elements_remaining_to_propagate(){
+    if(qhead < trail.size()){
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void Solver::lower_propagation_cutoff(){
+    propagation_cutoff-- ;
+};
+
+void Solver::reset_propagation_cutoff(){
+    propagation_cutoff = 1;
+};
+
+bool Solver::up_for_propagation(Lit l){
+    Var v = var(l);
+    if (v <= 0 || v >= nVars()) return true; // TODO : Why so?
+    assert(activity[v] >= 0);
+    if (activity[v] >= propagation_cutoff)
+        return true;
+    else{
+        return false;
+    }
+}
+
+/*_________________________________________________________________________________________________
+|
+|  lazy_propagate : [void]  ->  [Clause*]
+|
+|  Description:
+|    Propagates some of the enqueued facts.
+|    Behaviour is mostly same as propagate
+|
+|    Post-conditions:
+|      * the propagation queue is not necessarily empty
+|________________________________________________________________________________________________@*/
+CRef Solver::lazy_propagate()
+{
+    CRef    confl     = CRef_Undef;
+    int     num_props = 0;
+    int     lqhead = qhead;  // lazy qhead, for this propagation only
+
+    while (lqhead < trail.size()){
+
+        Lit p = lit_Undef;
+        do {
+//         lower_propagation_cutoff();
+        while (p == lit_Undef){
+            Lit q = trail[lqhead++];     // 'q' is enqueued fact to propagate.
+            if(up_for_propagation(q)){
+                if(lqhead == qhead + 1){
+                    qhead++;
+                }
+                p = q;
+            }
+        }
+        } while (p == lit_Undef && lqhead < qhead);
+
+        vec<Watcher>&  ws  = watches.lookup(p);
+        Watcher        *i, *j, *end;
+        num_props++;
+
+        for (i = j = (Watcher*)ws, end = i + ws.size();  i != end;){
+            // Try to avoid inspecting the clause:
+            Lit blocker = i->blocker;
+            if (value(blocker) == l_True){
+                *j++ = *i++; continue; }
+
+            // Make sure the false literal is data[1]:
+            CRef     cr        = i->cref;
+            Clause&  c         = ca[cr];
+            Lit      false_lit = ~p;
+            if (c[0] == false_lit)
+                c[0] = c[1], c[1] = false_lit;
+            assert(c[1] == false_lit);
+            i++;
+
+            // If 0th watch is true, then clause is already satisfied.
+            Lit     first = c[0];
+            Watcher w     = Watcher(cr, first);
+            if (first != blocker && value(first) == l_True){
+                *j++ = w; continue; }
+
+            // Look for new watch:
+            for (int k = 2; k < c.size(); k++)
+                if (value(c[k]) != l_False){
+                    c[1] = c[k]; c[k] = false_lit;
+                    watches[~c[1]].push(w);
+                    goto NextClause; }
+
+            // Did not find watch -- clause is unit under assignment:
+            *j++ = w;
+            if (value(first) == l_False){
+                confl = cr;
+                qhead = trail.size();
+                // Copy the remaining watches:
+                while (i < end)
+                    *j++ = *i++;
+            }else
+                uncheckedEnqueue(first, cr);
+
+        NextClause:;
+        }
+        ws.shrink(i - j);
+        if(lqhead < qhead){
+            lqhead = qhead;
+        }
+    }
+
+    propagations += num_props;
+    simpDB_props -= num_props;
+
+    return confl;
+}
+
 
 /*_________________________________________________________________________________________________
 |
@@ -708,7 +829,8 @@ lbool Solver::search(int nof_conflicts)
     starts++;
 
     for (;;){
-        CRef confl = propagate();
+        startsearch:
+        CRef confl = lazy_propagate();
         if (confl != CRef_Undef){
             // CONFLICT
             conflicts++; conflictC++;
@@ -760,6 +882,9 @@ lbool Solver::search(int nof_conflicts)
                 reduceDB();
 
             Lit next = lit_Undef;
+
+            assert(assumptions.size() == 0);
+
             while (decisionLevel() < assumptions.size()){
                 // Perform user provided assumption:
                 Lit p = assumptions[decisionLevel()];
@@ -780,9 +905,14 @@ lbool Solver::search(int nof_conflicts)
                 decisions++;
                 next = pickBranchLit();
 
-                if (next == lit_Undef)
-                    // Model found:
-                    return l_True;
+                if (next == lit_Undef){
+                    if (!elements_remaining_to_propagate())
+                        return l_True;
+                    else{
+                        lower_propagation_cutoff();
+                        goto startsearch;
+                    }
+                }
             }
 
             // Increase decision level and enqueue 'next'
