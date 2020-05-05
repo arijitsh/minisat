@@ -760,7 +760,8 @@ lbool Solver::search(int nof_conflicts)
                     }
                 }
 
-                if(LM > restartTolerance && nofLM>= restartLess) { // restart
+                if((LM > restartTolerance && nofLM>= restartLess)
+                    || (nof_conflicts >= 0 && conflictC >= nof_conflicts)) { // restart
                     progress_estimate= progressEstimate();
                     cancelUntil(0);
                     return l_Undef;
