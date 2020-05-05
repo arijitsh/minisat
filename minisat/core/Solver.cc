@@ -748,24 +748,24 @@ lbool Solver::search(int nof_conflicts)
         }else{
             // NO CONFLICT
             if (conflictC >= restartMore) { // search and count local minimum
-				int LM= backtrackLevels[0];
-				int nofLM= 1;
+                int LM= backtrackLevels[0];
+                int nofLM= 1;
 
-				for(int i=1; i< restartMore; i++) {
-					if(backtrackLevels[i]< LM) {
-						LM= backtrackLevels[i];
-						nofLM= 1;
-					} else if(backtrackLevels[i]== LM) {
-						nofLM++;
-					}
-				}
+                for(int i=1; i< restartMore; i++) {
+                    if(backtrackLevels[i]< LM) {
+                        LM= backtrackLevels[i];
+                        nofLM= 1;
+                    } else if(backtrackLevels[i]== LM) {
+                        nofLM++;
+                    }
+                }
 
-				if(LM > restartTolerance && nofLM>= restartLess) { // restart
+                if(LM > restartTolerance && nofLM>= restartLess) { // restart
                     progress_estimate= progressEstimate();
                     cancelUntil(0);
                     return l_Undef;
-				}
-			}
+                }
+            }
 
 
             // Simplify the set of problem clauses:
@@ -863,10 +863,10 @@ lbool Solver::solve_()
 
     double cvr= (double)nClauses() / (double)nVars();
     nof_learnts= 300000 / cvr;
-	restartLess= 5;
-	restartMore= 42;
-	restartTolerance= nVars() / 10000 +10;
-	backtrackLevels= new int[restartMore];
+    restartLess= 5;
+    restartMore= 42;
+    restartTolerance= nVars() / 10000 +10;
+    backtrackLevels= new int[restartMore];
 
     max_learnts = nClauses() * learntsize_factor;
     if (max_learnts < min_learnts_lim)
