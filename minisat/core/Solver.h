@@ -146,6 +146,14 @@ public:
     int       learntsize_adjust_start_confl;
     double    learntsize_adjust_inc;
 
+    // Restart Hack
+
+    int restartLess;
+    int restartMore;
+    float restartTolerance;
+    double nof_learnts;
+    int* backtrackLevels;
+
     // Statistics: (read-only member variable)
     //
     uint64_t solves, starts, decisions, rnd_decisions, propagations, conflicts;

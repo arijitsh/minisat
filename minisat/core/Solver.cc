@@ -718,6 +718,8 @@ lbool Solver::search(int nof_conflicts)
             analyze(confl, learnt_clause, backtrack_level);
             cancelUntil(backtrack_level);
 
+            backtrackLevels[conflicts % restartMore]= backtrack_level;
+
             if (learnt_clause.size() == 1){
                 uncheckedEnqueue(learnt_clause[0]);
             }else{
@@ -745,11 +747,26 @@ lbool Solver::search(int nof_conflicts)
 
         }else{
             // NO CONFLICT
-            if ((nof_conflicts >= 0 && conflictC >= nof_conflicts) || !withinBudget()){
-                // Reached bound on number of conflicts:
-                progress_estimate = progressEstimate();
-                cancelUntil(0);
-                return l_Undef; }
+            if (conflictC >= restartMore) { // search and count local minimum
+				int LM= backtrackLevels[0];
+				int nofLM= 1;
+
+				for(int i=1; i< restartMore; i++) {
+					if(backtrackLevels[i]< LM) {
+						LM= backtrackLevels[i];
+						nofLM= 1;
+					} else if(backtrackLevels[i]== LM) {
+						nofLM++;
+					}
+				}
+
+				if(LM > restartTolerance && nofLM>= restartLess) { // restart
+                    progress_estimate= progressEstimate();
+                    cancelUntil(0);
+                    return l_Undef;
+				}
+			}
+
 
             // Simplify the set of problem clauses:
             if (decisionLevel() == 0 && !simplify())
@@ -843,6 +860,13 @@ lbool Solver::solve_()
     if (!ok) return l_False;
 
     solves++;
+
+    double cvr= (double)nClauses() / (double)nVars();
+    nof_learnts= 300000 / cvr;
+	restartLess= 5;
+	restartMore= 42;
+	restartTolerance= nVars() / 10000 +10;
+	backtrackLevels= new int[restartMore];
 
     max_learnts = nClauses() * learntsize_factor;
     if (max_learnts < min_learnts_lim)
