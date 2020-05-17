@@ -1,3 +1,8 @@
 language: cpp
 dist: bionic
 compiler: g++
+sudo: required
+
+# run the typical ci checks, for now, compile
+script:
+  - make
